@@ -1,0 +1,19 @@
+seed: 40
+data_frame_path = "top_"
+
+model:
+  model_name: "distilbert-base-uncased"
+  num_heads: 8  # currently unused
+  dropout: 0.2  # currently unused
+  num_layers: 6 # currently unused
+  
+
+num_epochs: 3
+gradient_accumulation_steps: 1 # Number of updates steps to accumulate before performing a backward/update pass.
+batch_size: 64
+learning_rate: 2.0E-5 # The initial learning rate for Adam.
+adam_epsilon: 1.0E-8   # Epsilon for Adam optimizer.
+only_prediction: null # str: Epsilon for Adam optimizer. (?)
+do_save: false        # bool: Save the model or not.
+n_labels: "10000"
+weight_decay: 0.0001
