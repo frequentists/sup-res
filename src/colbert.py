@@ -56,7 +56,7 @@ class ColBERT:
 
     def setup_model(self, train=False) -> None:
         if not train:
-            self.model = RAGPretrainedModel.from_pretrained(("colbert-ir/colbertv2.0"))
+            self.model = RAGPretrainedModel.from_pretrained(("./colbertv2_checkpoint"))
             pass
         # trainer = RAGTrainer(
         #     model_name="Test_ColBERT",
