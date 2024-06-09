@@ -32,7 +32,7 @@ class ColBERT:
     """train and index ColBERT on legal training data and use it for search"""
 
     def __init__(self) -> None:
-        pass
+        self.triplets_finetune = []
 
     def load_data(self, path="./data/top_10k.csv.gz") -> None:
         df = pd.read_csv(path, compression="gzip")
@@ -56,8 +56,25 @@ class ColBERT:
 
     def setup_model(self, train=False) -> None:
         if not train:
-            self.model = RAGPretrainedModel.from_pretrained(("./colbertv2_checkpoint"))
+            self.model = RAGTrainer(model_name = "MyFineTunedColBERT", pretrained_model_name = "colbert-ir/colbertv2.0")
+            #self.model = RAGTrainer(model_name = "MyFineTunedColBERT", pretrained_model_name = "./colbertv2_checkpoint")
             pass
+        # if train:
+        #     self.model = RAGTrainer(model_name = "MyFineTunedColBERT", pretrained_model_name = "./colbertv2_checkpoint")
+            
+        #     trainer.prepare_training_data(raw_data=train, data_out_path="./data/", all_documents=documents, num_new_negatives=0, mine_hard_negatives=False)
+        #     trainer.train(batch_size=32,
+        #       nbits=4, # How many bits will the trained model use when compressing indexes
+        #       maxsteps=50, # Maximum steps hard stop
+        #       use_ib_negatives=True, # Use in-batch negative to calculate loss
+        #       dim=128, # How many dimensions per embedding. 128 is the default and works well.
+        #       learning_rate=5e-6, # Learning rate, small values ([3e-6,3e-5] work best if the base model is BERT-like, 5e-6 is often the sweet spot)
+        #       doc_maxlen=64, # Maximum document length. Because of how ColBERT works, smaller chunks (128-256) work very well.
+        #       use_relu=False, # Disable ReLU -- doesn't improve performance
+        #       warmup_steps="auto", # Defaults to 10%
+        #      )
+
+
         # trainer = RAGTrainer(
         #     model_name="Test_ColBERT",
         #     pretrained_model_name="colbert-ir/colbertv2.0",
@@ -82,15 +99,32 @@ class ColBERT:
         #     warmup_steps="auto",  # Defaults to 10%
         # )
 
-    def index(self) -> None:
-        self.model.index(
-            collection=list(self.passages.values()),
-            document_ids=list(map(str, list(self.passages.keys()))),
-            # document_metadatas=document_metadata,
-            index_name="LePaRD_pretrained",
-            max_document_length=64,
-            split_documents=False,
-        )
+    def model_finetune(self, batch_size=32, nbits=4, maxsteps=50, use_ib_negatives=True, dim=128, learning_rate=5e-6, doc_maxlen=64, use_relu=False, warmup_steps="auto"):
+
+        for i in range(len(self.train)):
+            entry_1 = self.train['destination_context'].iloc[i] # context (1)
+            p_id = self.train['passage_id'].iloc[i]
+            entry_2 = self.passages[p_id] # passage of precedent (2)
+            entry_3 = self.lab2id[p_id] # label (0 - 9999)
+            self.triplets_finetune.append((entry_1, entry_2))
+        print(self.triplets_finetune[0])
+
+        self.model.prepare_training_data(raw_data=self.triplets_finetune, data_out_path="./finetune_output_verbose/", num_new_negatives=2, mine_hard_negatives=False)
+        #self.model.prepare_training_data(raw_data=self.triplets_finetune, data_out_path="./finetune_output_verbose/", all_documents=list(self.passages.values()), num_new_negatives=0, mine_hard_negatives=False)
+        self.model.train(self, batch_size, nbits, maxsteps, use_ib_negatives, dim, learning_rate, doc_maxlen, use_relu, warmup_steps)
+
+
+
+    # TODO
+    # def index(self) -> None:
+    #     self.model.index(
+    #         collection=list(self.passages.values()),
+    #         document_ids=list(map(str, list(self.passages.keys()))),
+    #         # document_metadatas=document_metadata,
+    #         index_name="LePaRD_pretrained",
+    #         max_document_length=64,
+    #         split_documents=False,
+    #     )
 
     def device(self) -> str:
         if platform.system() == "Darwin":
