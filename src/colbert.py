@@ -3,6 +3,7 @@ import yaml, json
 import torch
 import numpy as np
 import pandas as pd
+import random
 from csv import DictReader
 from ragatouille import RAGPretrainedModel, RAGTrainer
 from sklearn.model_selection import StratifiedKFold
@@ -34,13 +35,14 @@ class ColBERT:
     def __init__(self) -> None:
         self.triplets_finetune = []
 
-    def load_data(self, path="./data/top_10k.csv.gz") -> None:
+    def load_data(self, path="./data/top_10k.csv.gz", keep_rows=["destination_context", "passage_id"]) -> None:
         df = pd.read_csv(path, compression="gzip")
-        df = df.sample(frac=1.0, random_state=42)
+        df = df[keep_rows]
+        df = df.sample(frac=1.0, random_state=42).reset_index(drop=True)
 
         self.lab2id = {int(i): j for j, i in enumerate(df.passage_id.unique())}
 
-        train_idx, dev_idx = int(len(df) * 0.9), int(len(df) * 0.95)
+        train_idx, dev_idx = 1000, int(len(df) * 0.95)
 
         self.train = df[:train_idx]
         self.dev = df[train_idx:dev_idx]
@@ -56,12 +58,16 @@ class ColBERT:
 
     def setup_model(self, train=False) -> None:
         if not train:
-            self.model = RAGTrainer(model_name = "MyFineTunedColBERT", pretrained_model_name = "colbert-ir/colbertv2.0")
-            #self.model = RAGTrainer(model_name = "MyFineTunedColBERT", pretrained_model_name = "./colbertv2_checkpoint")
-            pass
-        # if train:
-        #     self.model = RAGTrainer(model_name = "MyFineTunedColBERT", pretrained_model_name = "./colbertv2_checkpoint")
-            
+            # self.model = RAGTrainer(model_name = "MyFineTunedColBERT", pretrained_model_name = "colbert-ir/colbertv2.0")
+            self.model = RAGTrainer(
+                model_name="fine-tuned",
+                pretrained_model_name="./checkpoint",
+            )
+            return
+        self.model = RAGTrainer(
+            model_name="fine-tuned", pretrained_model_name="./checkpoint"
+        )
+
         #     trainer.prepare_training_data(raw_data=train, data_out_path="./data/", all_documents=documents, num_new_negatives=0, mine_hard_negatives=False)
         #     trainer.train(batch_size=32,
         #       nbits=4, # How many bits will the trained model use when compressing indexes
@@ -73,7 +79,6 @@ class ColBERT:
         #       use_relu=False, # Disable ReLU -- doesn't improve performance
         #       warmup_steps="auto", # Defaults to 10%
         #      )
-
 
         # trainer = RAGTrainer(
         #     model_name="Test_ColBERT",
@@ -99,21 +104,46 @@ class ColBERT:
         #     warmup_steps="auto",  # Defaults to 10%
         # )
 
-    def model_finetune(self, batch_size=32, nbits=4, maxsteps=50, use_ib_negatives=True, dim=128, learning_rate=5e-6, doc_maxlen=64, use_relu=False, warmup_steps="auto"):
+    def model_finetune(
+        self,
+        batch_size=32,
+        nbits=4,
+        maxsteps=0,
+        use_ib_negatives=True,
+        dim=128,
+        learning_rate=5e-6,
+        doc_maxlen=64,
+        use_relu=False,
+        warmup_steps="auto",
+        num_negatives=2,
+    ) -> None:
 
-        for i in range(len(self.train)):
-            entry_1 = self.train['destination_context'].iloc[i] # context (1)
-            p_id = self.train['passage_id'].iloc[i]
-            entry_2 = self.passages[p_id] # passage of precedent (2)
-            entry_3 = self.lab2id[p_id] # label (0 - 9999)
-            self.triplets_finetune.append((entry_1, entry_2))
-        print(self.triplets_finetune[0])
+        raw_data = self.train[["destination_context"]]
+        raw_data.loc[:, ["passages"]] = self.train["passage_id"].map(self.passages)
+        raw_data.loc[:, ["negatives"]] = self.train["passage_id"].map(lambda el: self.passage_sample(el, num_negatives))
+        raw_data = list(raw_data.itertuples(index=False, name=None))
+        raw_data = raw_data[:10]
 
-        self.model.prepare_training_data(raw_data=self.triplets_finetune, data_out_path="./finetune_output_verbose/", num_new_negatives=2, mine_hard_negatives=False)
-        #self.model.prepare_training_data(raw_data=self.triplets_finetune, data_out_path="./finetune_output_verbose/", all_documents=list(self.passages.values()), num_new_negatives=0, mine_hard_negatives=False)
-        self.model.train(self, batch_size, nbits, maxsteps, use_ib_negatives, dim, learning_rate, doc_maxlen, use_relu, warmup_steps)
-
-
+        self.model.prepare_training_data(
+            raw_data=raw_data,
+            data_out_path="./finetune_output_verbose/",
+            # all_documents=list(self.passages.values())[:30],
+            # mine_hard_negatives=True,
+            mine_hard_negatives=False,
+            num_new_negatives=0,
+        )
+        # self.model.prepare_training_data(raw_data=self.triplets_finetune, data_out_path="./finetune_output_verbose/", all_documents=list(self.passages.values()), num_new_negatives=0, mine_hard_negatives=False)
+        self.model.train(
+            batch_size=batch_size,
+            nbits=nbits,
+            maxsteps=maxsteps,
+            use_ib_negatives=use_ib_negatives,
+            dim=dim,
+            learning_rate=learning_rate,
+            doc_maxlen=doc_maxlen,
+            use_relu=use_relu,
+            warmup_steps=warmup_steps,
+        )
 
     # TODO
     # def index(self) -> None:
@@ -134,3 +164,8 @@ class ColBERT:
         elif torch.cuda.is_available():
             self.device = torch.device("cuda")
             return "cuda"
+    
+    def passage_sample(self, id, num=10):
+        subset = self.train["passage_id"][self.train["passage_id"] != id]
+        sample_ids = subset.sample(num)
+        return list(sample_ids.map(self.passages))

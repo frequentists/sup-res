@@ -1,8 +1,6 @@
 .vscode
 data
 *.pyc
-scripts
-*.sh
 __pycache__
-config
-.ragatouille
+finetune_output_verbose
+checkpoint
