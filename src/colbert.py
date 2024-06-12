@@ -44,8 +44,8 @@ class ColBERT:
 
         self.lab2id = {int(i): j for j, i in enumerate(df.passage_id.unique())}
 
-        # train_idx, dev_idx = int(len(df) * 0.9), int(len(df) * 0.95)
-        train_idx, dev_idx = 500, int(len(df) * 0.95)
+        train_idx, dev_idx = int(len(df) * 0.9), int(len(df) * 0.95)
+        # train_idx, dev_idx = 500, int(len(df) * 0.95)
 
         self.train = df[:train_idx]
         self.dev = df[train_idx:dev_idx]
@@ -59,54 +59,21 @@ class ColBERT:
         self.passages = self.passages["data"]
         self.passages = {key: self.passages[str(key)] for key in self.lab2id.keys()}
 
-    def setup_model(self, train=False) -> None:
+    def setup_model(self, train=False, checkpoint=None) -> None:
         """setup model with colbert, either pretrained or finetuned"""
 
         if not train:
             self.model = RAGTrainer(
                 model_name="fine-tuned",
-                pretrained_model_name="./ragatouille/colbert",
+                pretrained_model_name=(
+                    checkpoint if checkpoint else "colbert-ir/colbertv2.0"
+                ),
             )
             return
         self.model = RAGTrainer(
             model_name="fine-tuned", pretrained_model_name="colbert-ir/colbertv2.0"
         )
-
-        #     trainer.prepare_training_data(raw_data=train, data_out_path="./data/", all_documents=documents, num_new_negatives=0, mine_hard_negatives=False)
-        #     trainer.train(batch_size=32,
-        #       nbits=4, # How many bits will the trained model use when compressing indexes
-        #       maxsteps=50, # Maximum steps hard stop
-        #       use_ib_negatives=True, # Use in-batch negative to calculate loss
-        #       dim=128, # How many dimensions per embedding. 128 is the default and works well.
-        #       learning_rate=5e-6, # Learning rate, small values ([3e-6,3e-5] work best if the base model is BERT-like, 5e-6 is often the sweet spot)
-        #       doc_maxlen=64, # Maximum document length. Because of how ColBERT works, smaller chunks (128-256) work very well.
-        #       use_relu=False, # Disable ReLU -- doesn't improve performance
-        #       warmup_steps="auto", # Defaults to 10%
-        #      )
-
-        # trainer = RAGTrainer(
-        #     model_name="Test_ColBERT",
-        #     pretrained_model_name="colbert-ir/colbertv2.0",
-        #     language_code="en",
-        # )
-        # trainer.prepare_training_data(
-        #     raw_data=train,
-        #     data_out_path="./data/",
-        #     all_documents=documents,
-        #     num_new_negatives=0,
-        #     mine_hard_negatives=False,
-        # )
-        # trainer.train(
-        #     batch_size=32,
-        #     nbits=4,  # How many bits will the trained model use when compressing indexes
-        #     maxsteps=50,  # Maximum steps hard stop
-        #     use_ib_negatives=True,  # Use in-batch negative to calculate loss
-        #     dim=128,  # How many dimensions per embedding. 128 is the default and works well.
-        #     learning_rate=5e-6,  # Learning rate, small values ([3e-6,3e-5] work best if the base model is BERT-like, 5e-6 is often the sweet spot)
-        #     doc_maxlen=64,  # Maximum document length. Because of how ColBERT works, smaller chunks (128-256) work very well.
-        #     use_relu=False,  # Disable ReLU -- doesn't improve performance
-        #     warmup_steps="auto",  # Defaults to 10%
-        # )
+        self.model_finetune()
 
     def model_finetune(
         self,
@@ -147,16 +114,33 @@ class ColBERT:
             warmup_steps=warmup_steps,
         )
 
-    # TODO
-    # def index(self) -> None:
-    #     self.model.index(
-    #         collection=list(self.passages.values()),
-    #         document_ids=list(map(str, list(self.passages.keys()))),
-    #         # document_metadatas=document_metadata,
-    #         index_name="LePaRD_pretrained",
-    #         max_document_length=64,
-    #         split_documents=False,
-    #     )
+    def index(self) -> None:
+        self.model.index(
+            collection=list(self.passages.values()),
+            document_ids=list(map(str, list(self.passages.keys()))),
+            # document_metadatas=document_metadata,
+            index_name="LePaRD_pretrained",
+            max_document_length=256,
+            split_documents=False,
+        )
+
+    def recall(self, top_k=[1, 5, 10]) -> None:
+        results = self.model.search(self.test)
+        # number of documents correctly classified to be in the top k results
+        top_k_abs = {key: 0 for key in top_k}
+
+        for i, test_search_res in enumerate(results):
+            # checking if the right document has been found in the top 10
+            for doc in filter(
+                lambda doc: doc.document_id == self.test.passage_id.iloc[i],
+                test_search_res[:k],
+            ):
+                for k in filter(lambda p: doc.rank < p, top_k):
+                    top_k_abs[k] += 1
+                break
+
+        print(top_k)
+        print([100 * top_k_abs[key] / len(self.test) for key in top_k])
 
     def device(self) -> str:
         if platform.system() == "Darwin":

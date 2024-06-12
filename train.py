@@ -7,11 +7,9 @@ if __name__ == "__main__":
     x.load_passages()
     print("passages loaded")
     x.setup_model(train=True)
-    print("model setup")
-    x.model_finetune()
-    print("model finetune")
+    print("model setup and trained")
 
     #x.index()
     #print("index setup")
 
-# sbatch --time=08:00 --mem-per-cpu=14G --gpus=1 --gres=gpumem:10G --mail-type=END --mail-user="" --wrap="python scripts.py"
+# sbatch --time=08:00 --mem-per-cpu=14G --gpus=1 --gres=gpumem:10G --mail-type=END --mail-user="" --wrap="python train.py"
