@@ -1,13 +1,5 @@
-import platform
-import yaml, json
-import torch
-import numpy as np
-import pandas as pd
-from csv import DictReader
-from ragatouille import RAGPretrainedModel, RAGTrainer
-from sklearn.model_selection import StratifiedKFold
+print(__name__)
 
-import sys
-print(sys.version)
+from src import ColBERT
 
-# sbatch --time=08:00 --mem-per-cpu=12G --gpus=1 --gres=gpumem:10G --mail-type=END --mail-user="" --wrap="python scripts.py"
+print(__name__)
