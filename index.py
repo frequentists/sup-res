@@ -10,5 +10,3 @@ if __name__ == "__main__":
     print("model indexed")
     x.recall()
     print("test")
-
-# sbatch --time=08:00 --mem-per-cpu=14G --gpus=1 --gres=gpumem:10G --mail-type=END --mail-user="" --wrap="python index.py"

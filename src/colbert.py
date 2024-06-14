@@ -63,11 +63,10 @@ class ColBERT:
         """setup model with colbert, either pretrained or finetuned"""
 
         if not train:
-            self.model = RAGTrainer(
-                model_name="fine-tuned",
-                pretrained_model_name=(
+            self.model = RAGPretrainedModel.from_pretrained(
+                pretrained_model_name_or_path=(
                     checkpoint if checkpoint else "colbert-ir/colbertv2.0"
-                ),
+                )
             )
             return
         self.model = RAGTrainer(
@@ -128,6 +127,7 @@ class ColBERT:
         results = self.model.search(self.test)
         # number of documents correctly classified to be in the top k results
         top_k_abs = {key: 0 for key in top_k}
+        print(results)
 
         for i, test_search_res in enumerate(results):
             # checking if the right document has been found in the top 10

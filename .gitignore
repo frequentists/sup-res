@@ -2,6 +2,7 @@
 .vscode
 data
 *.pyc
+*.sh
 __pycache__
 finetune_output_verbose
 checkpoint
