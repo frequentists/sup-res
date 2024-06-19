@@ -18,10 +18,20 @@ import argparse
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoConfig
 from utils import *
 import os
+import yaml
 
 # def train_model(trainset, model_name):
 # def evaluate_epoch(model, dataset):
-# class SequenceClassificationDataset(Dataset), 	def __init__(self, x, y, tokenizer):
+# class SequenceClassificationDataset(Dataset), 	def __init__(self, x, y tokenizer):
+
+
+def load_yaml(yaml_file_path):
+    """Load yaml file and return dictionary"""
+    try:
+        with open(yaml_file_path, "r") as stream:
+            return yaml.safe_load(stream)
+    except yaml.YAMLError as exc:
+        print(exc)
 
 
 def get_splits(X, y):
@@ -68,6 +78,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # args.save_path = "no-trainer-" + args.model_name + "-" + args.n_labels
+
+    # args = load_yaml("config.yaml") # args is now a dictionary loaded from yaml file
 
     train, dev, test, passage2labelid = load_data(
         dataframe="data/top_" + args.n_labels + "_training_data_NAACL.csv.gz"
