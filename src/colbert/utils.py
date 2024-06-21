@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import yaml, json
+import yaml, json, gzip
+from typing import Dict
 
 import pandas as pd
 
@@ -43,10 +44,10 @@ class DataState:
         self.dev = df[train_idx:dev_idx]
         self.test = df[dev_idx:]
 
-    def load_passages(self, path="./data/passage_dict.json") -> None:
+    def load_passages(self) -> Dict[int, str]:
         """load dictionary of passage_ids and passages"""
 
-        with open(path, "r") as f:
+        with gzip.open(self.config["data"]["passages_path"], "rt", encoding="utf-8") as f:
             self.passages = json.load(f)
         self.passages = self.passages["data"]
-        self.passages = {key: self.passages[str(key)] for key in self.lab2id.keys()}
+        self.passages = {int(key): self.passages[key] for key in self.passages.keys()}

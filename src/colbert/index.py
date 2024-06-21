@@ -10,7 +10,7 @@ def index_colbert(state: DataState) -> None:
         pretrained_model_name_or_path=state.config["index_checkpoint"]
     )
     model.index(
-        collection=list(state.passages.values()),
-        document_ids=list(map(str, list(state.passages.keys()))),
+        collection=[state.passages[key] for key in state.lab2id.keys()],
+        document_ids=[str(key) for key in state.lab2id.keys()],
         **state.config["index"]
     )

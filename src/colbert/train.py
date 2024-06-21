@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from pathlib import Path
+from random import sample
 
 from tqdm.autonotebook import tqdm
 from ragatouille import RAGTrainer
@@ -37,9 +38,14 @@ def train_colbert(state: DataState) -> str:
     return model.train(**state.config["train"])
 
 
-def passage_sample(state: DataState, id) -> list:
+def passage_sample(state: DataState, id: int) -> list:
     """sample num passages which are not relevant to the context"""
 
-    subset = state.train["passage_id"][state.train["passage_id"] != id]
-    sample_ids = subset.sample(state.config["data"]["num_negatives"])
-    return list(sample_ids.map(state.passages))
+    # subset = state.train["passage_id"][state.train["passage_id"] != id]
+    # sample_ids = subset.sample(state.config["data"]["num_negatives"])
+    # return list(sample_ids.map(state.passages))
+
+    subset = [key for key in state.passages.keys() if key != id]
+    sample_ids = sample(subset, state.config["data"]["num_negatives"])
+    return [state.passages[id] for id in sample_ids]
+

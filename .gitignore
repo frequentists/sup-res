@@ -2,6 +2,7 @@
 .vscode
 data
 *.pyc
+scripts
 *.sh
 __pycache__
 config
