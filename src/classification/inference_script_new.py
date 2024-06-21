@@ -70,9 +70,17 @@ if __name__ == "__main__":
     all_labels = ["10000", "20000", "50000"]
 
     for model_name, n_labels in zip(model_names, all_labels):
+        str_label = ""
+        
+        if n_labels == "10000":
+            str_label = "10k"
+        elif n_labels == "20000":
+            str_label = "20k"
+        elif n_labels == "50000":
+            str_label = "50k"
         print(model_name)
         train, dev, test, passage2labelid = load_data(
-            dataframe="data/top_" + n_labels + "_training_data_NAACL.csv.gz"
+            dataframe="./data/top_" + str_label + ".csv.gz"
         )
         label2passageid = {i: j for j, i in passage2labelid.items()}
         tokenizer = AutoTokenizer.from_pretrained(model_name, truncation_side="left")

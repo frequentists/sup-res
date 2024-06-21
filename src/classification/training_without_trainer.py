@@ -68,9 +68,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # args.save_path = "no-trainer-" + args.model_name + "-" + args.n_labels
-
+    str_label = ""
+    if args.n_labels == "10000":
+        str_label = "10k"
+    elif args.n_labels == "20000":
+        str_label = "20k"
+    elif args.n_labels == "50000":
+        str_label = "50k"
     train, dev, test, passage2labelid = load_data(
-        dataframe="data/top_" + args.n_labels + "_training_data_NAACL.csv.gz"
+        dataframe="./data/top_" + str_label + ".csv.gz"
     )
     if os.path.exists(args.n_labels + "_labelmap.json"):
         pass
