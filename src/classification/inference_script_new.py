@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
-from utils import *
+from utils import load_data
 from transformer_models import (
     SequenceClassificationDataset,
     evaluate_epoch,

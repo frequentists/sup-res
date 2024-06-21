@@ -19,11 +19,6 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer, Auto
 from utils import *
 import os
 
-# def train_model(trainset, model_name):
-# def evaluate_epoch(model, dataset):
-# class SequenceClassificationDataset(Dataset), 	def __init__(self, x, y, tokenizer):
-
-
 def get_splits(X, y):
     skf = StratifiedKFold(n_splits=5, random_state=42, shuffle=True)
     X = np.array(X)
