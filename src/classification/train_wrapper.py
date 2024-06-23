@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 from torch.utils.data import Dataset, DataLoader
 from transformers import AdamW, get_linear_schedule_with_warmup
 from tqdm import tqdm
-
+from sklearn.metrics import top_k_accuracy_score
 from sklearn import metrics
 
 
@@ -34,8 +34,6 @@ class SequenceClassificationModule(pl.LightningModule):
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, config=self.config)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
-        self.label2passageid = 
-
     def forward(self, **inputs):
         return self.model(**inputs)
 
@@ -48,14 +46,30 @@ class SequenceClassificationModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         self.model.eval()
-        output = model(**batch["model_inputs"])
-        logits = output.logits
-        targets.extend(batch["label"].float().tolist())
-        outputs.extend(logits.argmax(dim=1).tolist())
-        probs.extend(logits.softmax(dim=1)[:, 1].tolist())
-        top_1_recall = accuracy_score(y_dev, outputs))
-        top_5_recall = metric.top_k_accuracy_score()
+        targets = []
+        outputs = []
+        probs = []
+        with torch.no_grad():
+            output = self.model(**batch["model_inputs"])
+            logits = output.logits
+            targets.extend(batch["label"].float().tolist())
+            outputs.extend(logits.argmax(dim=1).tolist())
+            probs.extend(logits.softmax(dim=1)[:, 1].tolist())
+            self.log("val_loss", output.loss)
+        top_1_accuracy = top_k_accuracy_score(targets, probs, k=1)
+        top_5_accuracy = top_k_accuracy_score(targets, probs, k=5)
+        top_10_accuracy = top_k_accuracy_score(targets, probs, k=10)
+        self.log("val_loss", output.loss)
+        self.log("top_1_val_accuracy", top_1_accuracy)
+        self.log("top_5_val_accuracy", top_5_accuracy)
+        self.log("top_10_val_accuracy", top_10_accuracy)
 
+    #ToDo Implement testing
+    """
+    def test_step(self, batch, batch_idx):
+        with torch.no_grad():
+            self.model.eval()
+    """
     def configure_optimizers(self):
         param_optimizer = list(self.model.named_parameters())
         no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
@@ -79,4 +93,14 @@ class SequenceClassificationModule(pl.LightningModule):
         scheduler = get_linear_schedule_with_warmup(
             optimizer, num_warmup_steps=0, num_training_steps=len(self.train_dataloader()) * self.num_epochs
         )
-        return [optimizer], [scheduler]
+        return  {
+            'optimizer': optimizer,
+            'lr_scheduler': {
+                'scheduler': scheduler,
+                'interval': 'step',  # or 'epoch' for epoch-level scheduler
+                'frequency': 1,
+                'reduce_on_plateau': False,
+                'monitor': 'val_loss'
+            }
+        }
+    

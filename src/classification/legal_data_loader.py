@@ -7,6 +7,8 @@ import torch
 import pytorch_lightning as pl
 from torch.utils.data import Dataset, DataLoader
 from utils import load_data
+import argparse
+from train_wrapper import SequenceClassificationModule
 # from transformer_models import SequenceClassificationDataset
 
 
@@ -74,11 +76,11 @@ class TextDataModule(pl.LightningDataModule):
         
         # Load data and passage2labelid mapping
         str_label = ""
-        if self.n_labels == "10000":
+        if self.n_labels == 10000:
             str_label = "10k"
-        elif self.n_labels == "20000":
+        elif self.n_labels == 20000:
             str_label = "20k"
-        elif self.n_labels == "50000":
+        elif self.n_labels == 50000:
             str_label = "50k"
         
         self.train, self.val, self.test, self.passage2labelid = load_data(
@@ -93,7 +95,7 @@ class TextDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         # Split the data and create datasets
-        self.prepare_data()
+        # self.prepare_data()
         self.X_train = self.train.destination_context.tolist()
         self.y_train = [self.passage2labelid[row.passage_id] for _, row in self.train.iterrows()]
 
@@ -105,22 +107,47 @@ class TextDataModule(pl.LightningDataModule):
         self.test_dataset = SequenceClassificationDatasetNoLabels(self.test.destination_context.tolist(), self.tokenizer)
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True, collate_fn=self.train_dataset.collate_fn)
     
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True, collate_fn=self.val_dataset.collate_fn)
     
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers, collate_fn=self.test_dataset.collate_fn)
 
-# Usage example
+
 if __name__ == "__main__":
-    import argparse
-
+    parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default="distilbert-base-uncased")
-    parser.add_argument("--batch_size", default=64, type=int, help="Batch size per GPU/CPU for training.")
-    parser.add_argument("--n_labels", default="10000", type=str, help="")
+    parser.add_argument("--num_epochs", type=int, default=3)
+    parser.add_argument(
+        "--gradient_accumulation_steps",
+        type=int,
+        default=1,
+        help="Number of updates steps to accumulate before performing a backward/update pass.",
+    )
+    parser.add_argument(
+        "--batch_size",
+        default=12,
+        type=int,
+        help="Batch size per GPU/CPU for training.",
+    )
+    parser.add_argument(
+        "--learning_rate",
+        default=2e-5,
+        type=float,
+        help="The initial learning rate for Adam.",
+    )
+    parser.add_argument(
+        "--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer."
+    )
+    parser.add_argument(
+        "--only_prediction", default=None, type=str, help="Epsilon for Adam optimizer."
+    )
+    parser.add_argument("--do_save", action="store_true")
+    parser.add_argument("--n_labels", default=10000, type=str, help="")
+    args = parser.parse_args()
     args = parser.parse_args()
 
     data_module = TextDataModule(
@@ -130,11 +157,15 @@ if __name__ == "__main__":
         batch_size=args.batch_size
     )
 
-    #data_module.prepare_data()
-    data_module.setup()
+    # data_module.prepare_data()
+    # data_module.setup()
     
     # Example of using the datamodule to get a dataloader
+    """
     train_loader = data_module.train_dataloader()
     for batch in train_loader:
-        print(batch)
+        print(batch["label"])
         break
+    """
+    trainer = pl.Trainer(limit_train_batches=100, max_epochs=1)
+    trainer.fit(model=SequenceClassificationModule(args=args), datamodule=data_module)
