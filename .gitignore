@@ -4,12 +4,10 @@ data
 *.pyc
 *.sh
 __pycache__
-<<<<<<< Updated upstream
 finetune_output_verbose
 checkpoint
 .ragatouille
-=======
 config
 .ragatouille
 .venv
->>>>>>> Stashed changes
+lightning_logs

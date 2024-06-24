@@ -9,6 +9,8 @@ from torch.utils.data import Dataset, DataLoader
 from utils import load_data
 import argparse
 from train_wrapper import SequenceClassificationModule
+from pytorch_lightning.loggers import WandbLogger
+import wandb
 # from transformer_models import SequenceClassificationDataset
 
 
@@ -110,10 +112,14 @@ class TextDataModule(pl.LightningDataModule):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True, collate_fn=self.train_dataset.collate_fn)
     
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True, collate_fn=self.val_dataset.collate_fn)
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers, collate_fn=self.val_dataset.collate_fn)
     
     def test_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers, collate_fn=self.test_dataset.collate_fn)
+    
+    #ToDo: Implement
+    def predict_dataloader(self):
+        pass
 
 
 if __name__ == "__main__":
@@ -148,18 +154,17 @@ if __name__ == "__main__":
     parser.add_argument("--do_save", action="store_true")
     parser.add_argument("--n_labels", default=10000, type=str, help="")
     args = parser.parse_args()
-    args = parser.parse_args()
 
     data_module = TextDataModule(
         data_path="./data/",
         model_name=args.model_name,
         n_labels=args.n_labels,
         batch_size=args.batch_size
-    )
+    ) 
 
-    # data_module.prepare_data()
-    # data_module.setup()
-    
+    data_module.prepare_data()
+    data_module.setup()
+    args.len_train_dataloader = len(data_module.train_dataloader())
     # Example of using the datamodule to get a dataloader
     """
     train_loader = data_module.train_dataloader()
@@ -167,5 +172,8 @@ if __name__ == "__main__":
         print(batch["label"])
         break
     """
+    api_key_wandb = "89dd0dde666ab90e0366c4fec54fe1a4f785f3ef"
+    wandb.login(key=api_key_wandb)
+    wandb_logger = WandbLogger(project='LePaRD_experimental', entity='frequentists', log_model='all')
     trainer = pl.Trainer(limit_train_batches=100, max_epochs=1)
-    trainer.fit(model=SequenceClassificationModule(args=args), datamodule=data_module)
+    trainer.fit(SequenceClassificationModule(args=args), data_module.train_dataloader(), data_module.val_dataloader())

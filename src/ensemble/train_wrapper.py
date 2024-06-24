@@ -11,8 +11,13 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer, Auto
 import torch
 import os
 import pytorch_lightning as pl
+
 from torch.utils.data import Dataset, DataLoader
-from transformers import AdamW, get_linear_schedule_with_warmup
+# from transformers import AdamW, get_linear_schedule_with_warmup
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import LambdaLR
+
+import numpy as np
 from tqdm import tqdm
 from sklearn.metrics import top_k_accuracy_score
 from sklearn import metrics
@@ -34,6 +39,9 @@ class SequenceClassificationModule(pl.LightningModule):
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, config=self.config)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
+        self.len_train_dataloader = args.len_train_dataloader
+
+        self.save_hyperparameters()
     def forward(self, **inputs):
         return self.model(**inputs)
 
@@ -46,23 +54,18 @@ class SequenceClassificationModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         self.model.eval()
-        targets = []
-        outputs = []
-        probs = []
         with torch.no_grad():
             output = self.model(**batch["model_inputs"])
             logits = output.logits
-            targets.extend(batch["label"].float().tolist())
-            outputs.extend(logits.argmax(dim=1).tolist())
-            probs.extend(logits.softmax(dim=1)[:, 1].tolist())
-            self.log("val_loss", output.loss)
-        top_1_accuracy = top_k_accuracy_score(targets, probs, k=1)
-        top_5_accuracy = top_k_accuracy_score(targets, probs, k=5)
-        top_10_accuracy = top_k_accuracy_score(targets, probs, k=10)
-        self.log("val_loss", output.loss)
-        self.log("top_1_val_accuracy", top_1_accuracy)
-        self.log("top_5_val_accuracy", top_5_accuracy)
-        self.log("top_10_val_accuracy", top_10_accuracy)
+            targets = batch["label"]
+            #self.log("val_loss", output.loss)
+            print(targets,logits)
+            top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
+            top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(10000))
+            top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(10000))
+            self.log("top_1_val_accuracy", top_1_accuracy)
+            self.log("top_5_val_accuracy", top_5_accuracy)
+            self.log("top_10_val_accuracy", top_10_accuracy)
 
     #ToDo Implement testing
     """
@@ -90,10 +93,17 @@ class SequenceClassificationModule(pl.LightningModule):
         optimizer = AdamW(
             optimizer_grouped_parameters, lr=self.learning_rate, eps=self.adam_epsilon
         )
-        scheduler = get_linear_schedule_with_warmup(
-            optimizer, num_warmup_steps=0, num_training_steps=len(self.train_dataloader()) * self.num_epochs
-        )
-        return  {
+
+        def lr_lambda(current_step: int):
+            warmup_steps = 0
+            total_steps = self.len_train_dataloader * self.num_epochs
+            if current_step < warmup_steps:
+                return float(current_step) / float(max(1, warmup_steps))
+            return max(0.0, float(total_steps - current_step) / float(max(1, total_steps - warmup_steps)))
+
+        scheduler = LambdaLR(optimizer, lr_lambda)
+
+        return {
             'optimizer': optimizer,
             'lr_scheduler': {
                 'scheduler': scheduler,
