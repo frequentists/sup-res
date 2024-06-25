@@ -50,16 +50,22 @@ class SequenceClassificationModule(pl.LightningModule):
         output = self(**batch["model_inputs"], labels=batch["label"])
         loss = output.loss / self.gradient_accumulation_steps
         self.log('train_loss', loss)
+        logits,targets = output.logits.detach().to('cpu').numpy(),batch["label"].to('cpu').numpy()
+        top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
+        top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(10000))
+        top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(10000))
+        self.log("top_1_train_accuracy", top_1_accuracy)
+        self.log("top_5_train_accuracy", top_5_accuracy)
+        self.log("top_10_train_accuracy", top_10_accuracy)
         return loss
 
     def validation_step(self, batch, batch_idx):
         self.model.eval()
         with torch.no_grad():
             output = self.model(**batch["model_inputs"])
-            logits = output.logits
-            targets = batch["label"]
+            logits = output.logits.detach().to('cpu').numpy()
+            targets = batch["label"].to('cpu').numpy()
             #self.log("val_loss", output.loss)
-            print(targets,logits)
             top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
             top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(10000))
             top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(10000))

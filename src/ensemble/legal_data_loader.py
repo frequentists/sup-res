@@ -11,6 +11,7 @@ import argparse
 from train_wrapper import SequenceClassificationModule
 from pytorch_lightning.loggers import WandbLogger
 import wandb
+
 # from transformer_models import SequenceClassificationDataset
 
 
@@ -33,7 +34,7 @@ class SequenceClassificationDatasetNoLabels(Dataset):
             padding=True,
             truncation=True,
             max_length=128,
-        )#.to(self.device)
+        )#.to(self.examples)
         return {"model_inputs": model_inputs}
 
 class SequenceClassificationDataset(Dataset):
@@ -56,13 +57,13 @@ class SequenceClassificationDataset(Dataset):
             padding=True,
             truncation=True,
             max_length=128,
-        )#.to(self.device)
+        )#.to(self.examples)
         labels = torch.tensor([i[1] for i in batch])#.to(self.device)
         return {"model_inputs": model_inputs, "label": labels}
 
 
 class TextDataModule(pl.LightningDataModule):
-    def __init__(self, data_path, model_name, n_labels, batch_size=64, num_workers=4):
+    def __init__(self, data_path, model_name, n_labels, batch_size=64, num_workers=1):
         super().__init__()
         self.data_path = data_path
         self.model_name = model_name
@@ -156,7 +157,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     data_module = TextDataModule(
-        data_path="./data/",
+        data_path="data/",
         model_name=args.model_name,
         n_labels=args.n_labels,
         batch_size=args.batch_size
@@ -174,6 +175,7 @@ if __name__ == "__main__":
     """
     api_key_wandb = "89dd0dde666ab90e0366c4fec54fe1a4f785f3ef"
     wandb.login(key=api_key_wandb)
-    wandb_logger = WandbLogger(project='LePaRD_experimental', entity='frequentists', log_model='all')
-    trainer = pl.Trainer(limit_train_batches=100, max_epochs=1)
+    wandb_logger = WandbLogger(project='LePaRD_classification', entity='sup-res-dl', log_model='all')
+    #don't limit batches, breaks learning rate scheduler
+    trainer = pl.Trainer(limit_train_batches=99999999, limit_val_batches = 99999999, max_epochs=500,check_val_every_n_epoch=1,log_every_n_steps=1,logger=wandb_logger)
     trainer.fit(SequenceClassificationModule(args=args), data_module.train_dataloader(), data_module.val_dataloader())

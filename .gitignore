@@ -11,3 +11,4 @@ config
 .ragatouille
 .venv
 lightning_logs
+wandb
