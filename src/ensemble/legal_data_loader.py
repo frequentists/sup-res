@@ -11,7 +11,7 @@ import argparse
 from train_wrapper import SequenceClassificationModule
 from pytorch_lightning.loggers import WandbLogger
 import wandb
-
+from lightning.pytorch.callbacks import LearningRateMonitor
 # from transformer_models import SequenceClassificationDataset
 
 
@@ -177,5 +177,6 @@ if __name__ == "__main__":
     wandb.login(key=api_key_wandb)
     wandb_logger = WandbLogger(project='LePaRD_classification', entity='sup-res-dl', log_model='all')
     #don't limit batches, breaks learning rate scheduler
-    trainer = pl.Trainer(limit_train_batches=99999999, limit_val_batches = 99999999, max_epochs=500,check_val_every_n_epoch=1,log_every_n_steps=1,logger=wandb_logger)
+    lr_monitor = LearningRateMonitor(logging_interval='step')
+    trainer = pl.Trainer(limit_train_batches=99999999, limit_val_batches = 99999999, max_epochs=50,check_val_every_n_epoch=1,log_every_n_steps=1,logger=wandb_logger,callbacks=[lr_monitor])
     trainer.fit(SequenceClassificationModule(args=args), data_module.train_dataloader(), data_module.val_dataloader())

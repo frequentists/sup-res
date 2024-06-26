@@ -72,6 +72,12 @@ class SequenceClassificationModule(pl.LightningModule):
             self.log("top_1_val_accuracy", top_1_accuracy)
             self.log("top_5_val_accuracy", top_5_accuracy)
             self.log("top_10_val_accuracy", top_10_accuracy)
+    
+    def predict(self, batch, batch_idx):
+        self.model.eval()
+        with torch.no_grad():
+            output = self.model(**batch["model_inputs"])
+            return output
 
     #ToDo Implement testing
     """
@@ -108,7 +114,7 @@ class SequenceClassificationModule(pl.LightningModule):
             return max(0.0, float(total_steps - current_step) / float(max(1, total_steps - warmup_steps)))
 
         scheduler = LambdaLR(optimizer, lr_lambda)
-
+        
         return {
             'optimizer': optimizer,
             'lr_scheduler': {
