@@ -12,7 +12,8 @@ from train_wrapper import SequenceClassificationModule
 from pytorch_lightning.loggers import WandbLogger
 import wandb
 from lightning.pytorch.callbacks import LearningRateMonitor
-# from transformer_models import SequenceClassificationDataset
+from pytorch_lightning.callbacks import ModelCheckpoint
+#from transformer_models import SequenceClassificationDataset
 
 
 class SequenceClassificationDatasetNoLabels(Dataset):
@@ -127,7 +128,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default="distilbert-base-uncased")
-    parser.add_argument("--num_epochs", type=int, default=3)
+    parser.add_argument("--num_epochs", type=int, default=5)
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
@@ -136,7 +137,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--batch_size",
-        default=12,
+        default=64,
         type=int,
         help="Batch size per GPU/CPU for training.",
     )
@@ -176,7 +177,8 @@ if __name__ == "__main__":
     api_key_wandb = "89dd0dde666ab90e0366c4fec54fe1a4f785f3ef"
     wandb.login(key=api_key_wandb)
     wandb_logger = WandbLogger(project='LePaRD_classification', entity='sup-res-dl', log_model='all')
+    checkpoint_callback = ModelCheckpoint(every_n_epochs=args.num_epochs)
     #don't limit batches, breaks learning rate scheduler
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    trainer = pl.Trainer(limit_train_batches=99999999, limit_val_batches = 99999999, max_epochs=50,check_val_every_n_epoch=1,log_every_n_steps=1,logger=wandb_logger,callbacks=[lr_monitor])
+    trainer = pl.Trainer(limit_train_batches=99999999, limit_val_batches = 99999999, max_epochs=args.num_epochs,check_val_every_n_epoch=1,log_every_n_steps=1,logger=wandb_logger,callbacks=[checkpoint_callback,lr_monitor])
     trainer.fit(SequenceClassificationModule(args=args), data_module.train_dataloader(), data_module.val_dataloader())
