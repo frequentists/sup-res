@@ -10,7 +10,7 @@ from sklearn.metrics import (
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoConfig
 import torch
 import os
-import pytorch_lightning as pl
+import lightning as pl
 
 from torch.utils.data import Dataset, DataLoader
 # from transformers import AdamW, get_linear_schedule_with_warmup
