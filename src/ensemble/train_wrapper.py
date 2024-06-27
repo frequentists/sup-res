@@ -85,6 +85,9 @@ class SequenceClassificationModule(pl.LightningModule):
         with torch.no_grad():
             self.model.eval()
     """
+
+    #Comment out/in as desired
+    """
     def configure_optimizers(self):
         param_optimizer = list(self.model.named_parameters())
         no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
@@ -125,4 +128,29 @@ class SequenceClassificationModule(pl.LightningModule):
                 'monitor': 'val_loss'
             }
         }
-    
+    """
+
+    def configure_optimizers(self):
+        param_optimizer = list(self.model.named_parameters())
+        no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
+        optimizer_grouped_parameters = [
+            {
+                "params": [
+                    p for n, p in param_optimizer if not any(nd in n for nd in no_decay)
+                ],
+                "weight_decay": 0.01,
+            },
+            {
+                "params": [
+                    p for n, p in param_optimizer if any(nd in n for nd in no_decay)
+                ],
+                "weight_decay": 0.0,
+            },
+        ]
+        optimizer = AdamW(
+            optimizer_grouped_parameters, lr=self.learning_rate, eps=self.adam_epsilon
+        )
+        lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer, max_lr=1e-3, total_steps=self.trainer.estimated_stepping_batches
+        )
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}

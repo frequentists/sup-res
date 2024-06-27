@@ -151,7 +151,10 @@ if __name__ == "__main__":
         "--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer."
     )
     parser.add_argument(
-        "--only_prediction", default=None, type=str, help="Epsilon for Adam optimizer."
+        "--only_prediction", default=None, type=str, help="???."
+    )
+    parser.add_argument(
+        "--num_workers", default=1, type=int, help="number of workers to load batches"
     )
     parser.add_argument("--do_save", action="store_true")
     parser.add_argument("--n_labels", default=10000, type=str, help="")
@@ -161,7 +164,8 @@ if __name__ == "__main__":
         data_path="data/",
         model_name=args.model_name,
         n_labels=args.n_labels,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        num_workers=args.num_workers
     ) 
 
     data_module.prepare_data()
