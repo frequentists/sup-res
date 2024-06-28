@@ -151,7 +151,7 @@ class SequenceClassificationModule(pl.LightningModule):
             optimizer_grouped_parameters, lr=self.learning_rate, eps=self.adam_epsilon
         )
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            optimizer, max_lr=1e-3, total_steps=self.trainer.estimated_stepping_batches,
+            optimizer, max_lr=1e-3, total_steps=self.trainer.estimated_stepping_batches,three_phase=True
         )
         return {
             'optimizer': optimizer,
@@ -160,6 +160,7 @@ class SequenceClassificationModule(pl.LightningModule):
                 'interval': 'step',  # or 'epoch' for epoch-level scheduler
                 'frequency': 1,
                 'reduce_on_plateau': False,
-                'monitor': "top_1_val_accuracy"
+                'monitor': "top_1_val_accuracy",
+                #'name': 'one_cycle_lr'
             }
         }

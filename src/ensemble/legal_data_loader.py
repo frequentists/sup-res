@@ -184,5 +184,5 @@ if __name__ == "__main__":
     checkpoint_callback = ModelCheckpoint(every_n_epochs=args.num_epochs)
     #don't limit batches, breaks learning rate scheduler
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    trainer = pl.pytorch.Trainer(limit_train_batches=9999999, limit_val_batches = 9999999, max_epochs=args.num_epochs,check_val_every_n_epoch=1,log_every_n_steps=1,logger=wandb_logger,callbacks=[checkpoint_callback,lr_monitor])
+    trainer = pl.pytorch.Trainer(limit_train_batches=9999999, limit_val_batches = 9999999, max_epochs=args.num_epochs,check_val_every_n_epoch=1,log_every_n_steps=20,logger=wandb_logger,callbacks=[checkpoint_callback,lr_monitor])
     trainer.fit(SequenceClassificationModule(args=args), data_module.train_dataloader(), data_module.val_dataloader())
