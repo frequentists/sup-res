@@ -137,7 +137,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--batch_size",
-        default=64,
+        default=16,
         type=int,
         help="Batch size per GPU/CPU for training.",
     )

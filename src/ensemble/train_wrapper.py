@@ -144,13 +144,22 @@ class SequenceClassificationModule(pl.LightningModule):
                 "params": [
                     p for n, p in param_optimizer if any(nd in n for nd in no_decay)
                 ],
-                "weight_decay": 0.0,
+                "weight_decay": 0.01,
             },
         ]
         optimizer = AdamW(
             optimizer_grouped_parameters, lr=self.learning_rate, eps=self.adam_epsilon
         )
-        lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            optimizer, max_lr=1e-3, total_steps=self.trainer.estimated_stepping_batches
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer, max_lr=1e-3, total_steps=self.trainer.estimated_stepping_batches,
         )
-        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': {
+                'scheduler': scheduler,
+                'interval': 'step',  # or 'epoch' for epoch-level scheduler
+                'frequency': 1,
+                'reduce_on_plateau': False,
+                'monitor': "top_1_val_accuracy"
+            }
+        }
