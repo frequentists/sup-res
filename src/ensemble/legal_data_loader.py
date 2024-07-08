@@ -36,7 +36,7 @@ class SequenceClassificationDatasetNoLabels(Dataset):
             truncation=True,
             max_length=128,
         )#.to(self.examples)
-        return {"model_inputs": model_inputs}
+        return {"model_inputs": model_inputs, "raw_text": [i[0] for i in batch]}
 
 class SequenceClassificationDataset(Dataset):
     def __init__(self, x, y, tokenizer):
@@ -60,7 +60,7 @@ class SequenceClassificationDataset(Dataset):
             max_length=128,
         )#.to(self.examples)
         labels = torch.tensor([i[1] for i in batch])#.to(self.device)
-        return {"model_inputs": model_inputs, "label": labels}
+        return {"model_inputs": model_inputs, "label": labels, "raw_text": [i[0] for i in batch]}
 
 
 class TextDataModule(pl.LightningDataModule):

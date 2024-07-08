@@ -51,3 +51,6 @@ class DataState:
             self.passages = json.load(f)
         self.passages = self.passages["data"]
         self.passages = {int(key): self.passages[key] for key in self.passages.keys()}
+    
+    def get_config():
+        return self.config

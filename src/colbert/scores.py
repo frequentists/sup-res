@@ -3,7 +3,7 @@
 from tqdm import tqdm
 from ragatouille import RAGPretrainedModel
 from .utils import DataState
-
+import torch
 
 # Function to normalize scores
 def normalize_scores(scores):
@@ -36,3 +36,4 @@ def scores_colbert(state: DataState, batch, n, norm_func) -> None:
             vector[label] = norm_scores[i]
             
         batch_vectors.append(vector)
+    return torch.tensor(batch_vectors)
