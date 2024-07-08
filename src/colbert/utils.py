@@ -52,5 +52,5 @@ class DataState:
         self.passages = self.passages["data"]
         self.passages = {int(key): self.passages[key] for key in self.passages.keys()}
     
-    def get_config():
+    def get_config(self):
         return self.config
