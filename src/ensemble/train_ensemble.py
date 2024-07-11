@@ -6,7 +6,7 @@ from transformers import AutoTokenizer
 import torch
 import lightning as pl
 from torch.utils.data import Dataset, DataLoader
-from utils import load_data
+from .utils import load_data
 import argparse
 
 from lightning.pytorch.loggers import WandbLogger
@@ -14,11 +14,11 @@ import wandb
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.callbacks import ModelCheckpoint
 #from transformer_models import SequenceClassificationDataset
-from src.colbert.utils import DataState
-from legal_data_loader import SequenceClassificationDatasetNoLabels,SequenceClassificationDataset,TextDataModule
-from ensemble_model import EnsembleModel
+from ..colbert import DataState
+from .legal_data_loader import SequenceClassificationDatasetNoLabels,SequenceClassificationDataset,TextDataModule
+from .ensemble_model import EnsembleModel
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default="distilbert-base-uncased")

@@ -12,3 +12,4 @@ config
 .venv
 lightning_logs
 wandb
+artifacts

@@ -1,1 +1,0 @@
-from .colbert import ColBERT

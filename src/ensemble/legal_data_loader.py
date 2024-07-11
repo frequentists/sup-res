@@ -6,9 +6,9 @@ from transformers import AutoTokenizer
 import torch
 import lightning as pl
 from torch.utils.data import Dataset, DataLoader
-from utils import load_data
+from .utils import load_data
 import argparse
-from train_wrapper import SequenceClassificationModule
+from .train_wrapper import SequenceClassificationModule
 from lightning.pytorch.loggers import WandbLogger
 import wandb
 from lightning.pytorch.callbacks import LearningRateMonitor

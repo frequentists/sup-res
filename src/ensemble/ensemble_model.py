@@ -7,7 +7,7 @@ from tqdm import tqdm
 from sklearn.metrics import top_k_accuracy_score
 from sklearn import metrics
 import numpy as np
-from src.colbert.score_colbert import ScoreColBERT
+from ..colbert import ScoreColBERT
 
 class EnsembleModel(pl.LightningModule):
     # note, that check_point path is
@@ -29,17 +29,17 @@ class EnsembleModel(pl.LightningModule):
         run = wandb.init(project="LePaRD_classification",)
         artifact = run.use_artifact(checkpoint_path, type='model')
         artifact_dir = artifact.download()
-        classifier = torch.load(f'{artifact_dir}/model.pth')
+        classifier = torch.load(f'{artifact_dir}/model.ckpt')
         classifier.eval()
         return classifier
 
-    def forward(self, x_tokenized,x_raw_text):
-        classifier_output = self.classifier(x_tokenized)
+    def forward(self, x_raw_text, **x_tokenized):
+        classifier_output = self.classifier(**x_tokenized)
         colbert_output = self.colbert_scorer.scores_colbert(x_raw_text, n=classifier_output.size(1))
         return self.classifier_weight * classifier_output + self.colbert_weight * colbert_output
 
     def training_step(self, batch, batch_idx):
-        output = self(**batch["model_inputs"],batch["raw_text"])
+        output = self(batch["raw_text"], **batch["model_inputs"])
         loss = self.criterion(output, batch["labels"])
         self.log('train_loss', loss)
         logits,targets = output.logits.detach().to('cpu').numpy(),batch["label"].to('cpu').numpy()
@@ -54,7 +54,7 @@ class EnsembleModel(pl.LightningModule):
     
 
     def validation_step(self, batch, batch_idx):
-        output = self(**batch["model_inputs"],batch["raw_text"])
+        output = self(batch["raw_text"], **batch["model_inputs"])
         val_loss = self.criterion(output, batch["labels"])
         self.log('val_loss', val_loss)
         logits = output.logits.detach().to('cpu').numpy()
@@ -69,7 +69,7 @@ class EnsembleModel(pl.LightningModule):
         return val_loss
 
     def test_step(self, batch, batch_idx):
-        output = self(**batch["model_inputs"],batch["raw_text"])
+        output = self(batch["raw_text"], **batch["model_inputs"])
         test_loss = self.criterion(output, batch["labels"])
         self.log('test_loss', test_loss)
         logits = output.logits.detach().to('cpu').numpy()

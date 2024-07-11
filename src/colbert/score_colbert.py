@@ -2,8 +2,9 @@
 
 from tqdm import tqdm
 from ragatouille import RAGPretrainedModel
-from utils import DataState
 import torch
+
+from .utils import DataState
 
 class ScoreColBERT:
     def __init__(self, state: DataState):
