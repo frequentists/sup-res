@@ -22,7 +22,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default="distilbert-base-uncased")
-    parser.add_argument("--num_epochs", type=int, default=5)
+    parser.add_argument("--num_epochs", type=int, default=10)
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
@@ -76,8 +76,8 @@ def main():
     wandb.login(key=api_key_wandb)
     wandb_logger = WandbLogger(project='LePaRD_ensemble', entity='sup-res-dl', log_model='all')
     checkpoint_callback = ModelCheckpoint(monitor="top_1_val_accuracy",save_top_k = 1, mode = "max",auto_insert_metric_name=True, every_n_epochs=1,)
-    trainer = pl.pytorch.Trainer(limit_train_batches=9999999, limit_val_batches = 9999999, max_epochs=args.num_epochs,check_val_every_n_epoch=1,log_every_n_steps=20,logger=wandb_logger,callbacks=[checkpoint_callback])
+    trainer = pl.pytorch.Trainer(limit_train_batches=100, limit_val_batches = 100, max_epochs=args.num_epochs,check_val_every_n_epoch=1,log_every_n_steps=20,logger=wandb_logger,callbacks=[checkpoint_callback])
     
     state = DataState()
-    checkpoint_path = "sup-res-dl/LePaRD_classification/model-uuzahpqp:v0"
-    trainer.fit(EnsembleModel(checkpoint_path,state), data_module.train_dataloader(), data_module.val_dataloader())
+    checkpoint_path = "sup-res-dl/LePaRD_classification/model-6ho6xsv1:v7"
+    trainer.fit(EnsembleModel(checkpoint_path, state), data_module.train_dataloader(), data_module.val_dataloader())

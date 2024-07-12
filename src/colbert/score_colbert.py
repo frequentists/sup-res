@@ -27,9 +27,10 @@ class ScoreColBERT:
             k=self.state.config["search"]["initial"] if self.state.config["search"]["rerank"] else 10,
         )
 
-        batch_vectors = []  # To store the vectors for each sample in the batch
+        batch_vectors = []  # To store the pythonvectors for each sample in the batch
 
         for i, test_search_res in tqdm(enumerate(results), total=len(results)):
+            # print(test_search_res)
             refined_search_res = self.model.rerank(
                 query=batch[i],
                 documents=[el["content"] for el in test_search_res],
@@ -39,11 +40,11 @@ class ScoreColBERT:
 
             vector = [0] * n  # Initialize vector with zeros
             for j, doc in enumerate(refined_search_res):
-                label = self.state.lab2id[test_search_res[doc["result_index"]]["document_id"]]
+                label = self.state.lab2id[int(test_search_res[doc["result_index"]]["document_id"])]
                 vector[label] = norm_scores[j]
 
             batch_vectors.append(vector)
-        return torch.tensor(batch_vectors)
+        return batch_vectors
 
 # Example usage:
 # state = DataState(...)  # Initialize the DataState object with appropriate arguments

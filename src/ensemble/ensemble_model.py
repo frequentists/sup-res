@@ -1,18 +1,19 @@
-import pytorch_lightning as pl
+import lightning as lt
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import wandb
+import os
 from tqdm import tqdm
 from sklearn.metrics import top_k_accuracy_score
 from sklearn import metrics
 import numpy as np
+from .train_wrapper import SequenceClassificationModule
 from ..colbert import ScoreColBERT
 
-class EnsembleModel(pl.LightningModule):
+class EnsembleModel(lt.LightningModule):
     # note, that check_point path is
     def __init__(self, classifier_checkpoint, colbert_state):
-        super(EnsembleModel, self).__init__()
+        super().__init__()
         self.classifier = self.load_classifier(classifier_checkpoint)
         self.colbert_scorer = ScoreColBERT(colbert_state)
         self.criterion = nn.CrossEntropyLoss()
@@ -26,23 +27,24 @@ class EnsembleModel(pl.LightningModule):
         api_key_wandb = "89dd0dde666ab90e0366c4fec54fe1a4f785f3ef"
         wandb.login(key=api_key_wandb)
         # I think we dont need id as an argument here...
-        run = wandb.init(project="LePaRD_classification",)
+        run = wandb.init(project="LePaRD_classification")
         artifact = run.use_artifact(checkpoint_path, type='model')
         artifact_dir = artifact.download()
-        classifier = torch.load(f'{artifact_dir}/model.ckpt')
-        classifier.eval()
+        model_path = f"{artifact_dir}/model.ckpt"
+        classifier = SequenceClassificationModule.load_from_checkpoint(model_path)
+        classifier.model.eval()
         return classifier
 
     def forward(self, x_raw_text, **x_tokenized):
         classifier_output = self.classifier(**x_tokenized)
-        colbert_output = self.colbert_scorer.scores_colbert(x_raw_text, n=classifier_output.size(1))
-        return self.classifier_weight * classifier_output + self.colbert_weight * colbert_output
+        colbert_output = torch.tensor(self.colbert_scorer.scores_colbert(x_raw_text, n=classifier_output.logits.size(1))).to(classifier_output.logits)
+        return self.classifier_weight * classifier_output.logits + self.colbert_weight * colbert_output
 
     def training_step(self, batch, batch_idx):
         output = self(batch["raw_text"], **batch["model_inputs"])
-        loss = self.criterion(output, batch["labels"])
+        loss = self.criterion(output, batch["label"])
         self.log('train_loss', loss)
-        logits,targets = output.logits.detach().to('cpu').numpy(),batch["label"].to('cpu').numpy()
+        logits,targets = output.detach().to('cpu').numpy(),batch["label"].to('cpu').numpy()
         top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
         top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(10000))
         top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(10000))
@@ -50,14 +52,12 @@ class EnsembleModel(pl.LightningModule):
         self.log("top_5_train_accuracy", top_5_accuracy)
         self.log("top_10_train_accuracy", top_10_accuracy)
         return loss
-    
-    
 
     def validation_step(self, batch, batch_idx):
         output = self(batch["raw_text"], **batch["model_inputs"])
-        val_loss = self.criterion(output, batch["labels"])
+        val_loss = self.criterion(output, batch["label"])
         self.log('val_loss', val_loss)
-        logits = output.logits.detach().to('cpu').numpy()
+        logits = output.detach().to('cpu').numpy()
         targets = batch["label"].to('cpu').numpy()
         #self.log("val_loss", output.loss)
         top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
@@ -70,9 +70,9 @@ class EnsembleModel(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         output = self(batch["raw_text"], **batch["model_inputs"])
-        test_loss = self.criterion(output, batch["labels"])
+        test_loss = self.criterion(output, batch["label"])
         self.log('test_loss', test_loss)
-        logits = output.logits.detach().to('cpu').numpy()
+        logits = output.detach().to('cpu').numpy()
         targets = batch["label"].to('cpu').numpy()
         #self.log("test_loss", output.loss)
         top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
