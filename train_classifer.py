@@ -79,7 +79,7 @@ if __name__ == "__main__":
     checkpoint_callback = ModelCheckpoint(monitor="top_1_val_accuracy",save_top_k = 1, mode = "max",auto_insert_metric_name=True, every_n_epochs=1,)
     #don't limit batches, breaks learning rate scheduler
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    trainer = pl.pytorch.Trainer(limit_train_batches=9999999, limit_val_batches = 9999999, max_epochs=args.num_epochs,check_val_every_n_epoch=1,log_every_n_steps=1,logger=wandb_logger,callbacks=[checkpoint_callback,lr_monitor])
+    trainer = pl.pytorch.Trainer(limit_train_batches=9999999, limit_val_batches = 9999999, max_epochs=args.num_epochs,check_val_every_n_epoch=1,val_check_interval=2,log_every_n_steps=2,logger=wandb_logger,callbacks=[checkpoint_callback,lr_monitor])
     
     trainer.fit(SequenceClassificationModule(args=args), data_module.train_dataloader(), data_module.val_dataloader())
     trainer.test(dataloaders=data_module.test_dataloader())
