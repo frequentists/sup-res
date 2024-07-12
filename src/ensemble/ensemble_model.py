@@ -35,6 +35,7 @@ class EnsembleModel(pl.LightningModule):
 
     def forward(self, x_raw_text, **x_tokenized):
         classifier_output = self.classifier(**x_tokenized)
+        print(classifier_output)
         colbert_output = self.colbert_scorer.scores_colbert(x_raw_text, n=classifier_output.size(1))
         return self.classifier_weight * classifier_output + self.colbert_weight * colbert_output
 

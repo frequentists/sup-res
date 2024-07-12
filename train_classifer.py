@@ -15,9 +15,7 @@ from lightning.pytorch import seed_everything
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.callbacks import ModelCheckpoint
 #from transformer_models import SequenceClassificationDataset
-from src.ensemble.legal_data_loader import SequenceClassificationDatasetNoLabels,SequenceClassificationDataset,TextDataModule
-from src.ensemble.train_wrapper import SequenceClassificationModule
-from src.ensemble.utils import load_data
+from src.ensemble import SequenceClassificationDatasetNoLabels,SequenceClassificationDataset,TextDataModule,SequenceClassificationModule,load_data
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
