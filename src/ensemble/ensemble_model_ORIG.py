@@ -11,21 +11,16 @@ from .train_wrapper import SequenceClassificationModule
 from ..colbert import ScoreColBERT
 
 class EnsembleModel(lt.LightningModule):
+    # note, that check_point path is
     def __init__(self, classifier_checkpoint, colbert_state):
         super().__init__()
         self.classifier = self.load_classifier(classifier_checkpoint)
         self.colbert_scorer = ScoreColBERT(colbert_state)
         self.criterion = nn.CrossEntropyLoss()
 
-        # Define a linear layer for combining the outputs
-        classifier_output_dim = self.classifier.num_labels  # Adjust this based on your model configuration
-        colbert_output_dim = self.classifier.num_labels  # Assuming both have the same output dimension for simplicity
-        combined_output_dim = self.classifier.num_labels + colbert_output_dim
-
-        self.combination_layer = nn.Linear(combined_output_dim, classifier_output_dim)
-        self.save_hyperparameters()
-
-
+        # Initialize trainable weights
+        self.classifier_weight = nn.Parameter(torch.tensor(0.5))
+        self.colbert_weight = nn.Parameter(torch.tensor(0.5))
 
     def load_classifier(self, checkpoint_path):
         # Load the classifier from the wandb checkpoint    
@@ -41,32 +36,15 @@ class EnsembleModel(lt.LightningModule):
         return classifier
 
     def forward(self, x_raw_text, **x_tokenized):
-        
-        with torch.no_grad():
-            classifier_output = self.classifier(**x_tokenized)
-            colbert_output = torch.tensor(self.colbert_scorer.scores_colbert(x_raw_text, n=classifier_output.logits.size(1))).to(classifier_output.logits)
-        
-        # Stack the classifier and ColBERT outputs
-            combined_output = torch.cat((classifier_output.logits, colbert_output), dim=1).to(classifier_output.logits)
-        
-        print("#################")
-        print("#################")
-        print("#################")
-        print(combined_output.size())
-        print("#################")
-        print("#################")
-        print("#################")
-
-        # Pass through the combination layer
-        final_output = self.combination_layer(combined_output)
-        
-        return final_output
+        classifier_output = self.classifier(**x_tokenized)
+        colbert_output = torch.tensor(self.colbert_scorer.scores_colbert(x_raw_text, n=classifier_output.logits.size(1))).to(classifier_output.logits)
+        return self.classifier_weight * classifier_output.logits + self.colbert_weight * colbert_output
 
     def training_step(self, batch, batch_idx):
         output = self(batch["raw_text"], **batch["model_inputs"])
         loss = self.criterion(output, batch["label"])
         self.log('train_loss', loss)
-        logits, targets = output.detach().to('cpu').numpy(), batch["label"].to('cpu').numpy()
+        logits,targets = output.detach().to('cpu').numpy(),batch["label"].to('cpu').numpy()
         top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
         top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(10000))
         top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(10000))
@@ -77,19 +55,11 @@ class EnsembleModel(lt.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         output = self(batch["raw_text"], **batch["model_inputs"])
-
-        print("#################")
-        print("#################")
-        print("#################")
-        print(self.criterion(output, batch["label"]))
-        print("#################")
-        print("#################")
-        print("#################")
-
         val_loss = self.criterion(output, batch["label"])
-        #self.log('val_loss', val_loss)
+        self.log('val_loss', val_loss)
         logits = output.detach().to('cpu').numpy()
         targets = batch["label"].to('cpu').numpy()
+        #self.log("val_loss", output.loss)
         top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
         top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(10000))
         top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(10000))
@@ -104,6 +74,7 @@ class EnsembleModel(lt.LightningModule):
         self.log('test_loss', test_loss)
         logits = output.detach().to('cpu').numpy()
         targets = batch["label"].to('cpu').numpy()
+        #self.log("test_loss", output.loss)
         top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
         top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(10000))
         top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(10000))
@@ -113,5 +84,4 @@ class EnsembleModel(lt.LightningModule):
         return test_loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.combination_layer.parameters(), lr=1e-4)
-
+        return torch.optim.Adam([self.classifier_weight, self.colbert_weight], lr=1e-4)
