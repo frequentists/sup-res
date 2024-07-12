@@ -22,6 +22,7 @@ class EnsembleModel(lt.LightningModule):
         self.classifier_weight = nn.Parameter(torch.tensor(0.5))
         self.colbert_weight = nn.Parameter(torch.tensor(0.5))
 
+        self.save_hyperparameters()
     def load_classifier(self, checkpoint_path):
         # Load the classifier from the wandb checkpoint    
         api_key_wandb = "89dd0dde666ab90e0366c4fec54fe1a4f785f3ef"
