@@ -29,7 +29,7 @@ class ScoreColBERT:
 
         batch_vectors = []  # To store the pythonvectors for each sample in the batch
 
-        for i, test_search_res in tqdm(enumerate(results), total=len(results)):
+        for i, test_search_res in enumerate(results):
             # print(test_search_res)
             refined_search_res = self.model.rerank(
                 query=batch[i],

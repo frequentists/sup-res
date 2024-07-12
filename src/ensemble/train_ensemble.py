@@ -79,5 +79,5 @@ def main():
     trainer = pl.pytorch.Trainer(limit_train_batches=100, limit_val_batches = 100, max_epochs=args.num_epochs,check_val_every_n_epoch=1,log_every_n_steps=20,logger=wandb_logger,callbacks=[checkpoint_callback])
     
     state = DataState()
-    checkpoint_path = "sup-res-dl/LePaRD_classification/model-6ho6xsv1:v7"
+    checkpoint_path = "sup-resdl/LePaRD_classification/model-ymwdc5eu:v5" 
     trainer.fit(EnsembleModel(checkpoint_path, state), data_module.train_dataloader(), data_module.val_dataloader())
