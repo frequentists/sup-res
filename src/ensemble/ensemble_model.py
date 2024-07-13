@@ -32,7 +32,7 @@ class EnsembleModel(lt.LightningModule):
         api_key_wandb = "89dd0dde666ab90e0366c4fec54fe1a4f785f3ef"
         wandb.login(key=api_key_wandb)
         # I think we dont need id as an argument here...
-        run = wandb.init()
+        run = wandb.init(project='LePaRD_ensemble')
         artifact = run.use_artifact(checkpoint_path, type='model')
         artifact_dir = artifact.download()
         model_path = f"{artifact_dir}/model.ckpt"
