@@ -14,9 +14,9 @@ class ScoreColBERT:
     # Static method to normalize scores
     @staticmethod
     def normalize_scores(scores):
-        max_score = max(scores)
-        min_score = min(scores)
-        return [(score - min_score) / (max_score - min_score) for score in scores]
+        #max_score = max(scores)
+        #min_score = min(scores)
+        return scores
 
     def scores_colbert(self, batch, n, norm_func=None):
         if norm_func is None:
@@ -36,7 +36,7 @@ class ScoreColBERT:
                 documents=[el["content"] for el in test_search_res],
             )
 
-            norm_scores = norm_func([el["score"] for el in refined_search_res])
+            norm_scores = [el["score"] for el in refined_search_res]
 
             vector = [0] * n  # Initialize vector with zeros
             for j, doc in enumerate(refined_search_res):
