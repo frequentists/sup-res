@@ -16,13 +16,13 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 #from transformer_models import SequenceClassificationDataset
 from ..colbert import DataState
 from .legal_data_loader import SequenceClassificationDatasetNoLabels,SequenceClassificationDataset,TextDataModule
-from .ensemble_model import EnsembleModel
-
+from .ensemble_model_ORIG import EnsembleModel
+from lightning.pytorch import seed_everything
 def main():
     parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default="distilbert-base-uncased")
-    parser.add_argument("--num_epochs", type=int, default=10)
+    parser.add_argument("--num_epochs", type=int, default=20)
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
@@ -31,7 +31,7 @@ def main():
     )
     parser.add_argument(
         "--batch_size",
-        default=16,
+        default=128,
         type=int,
         help="Batch size per GPU/CPU for training.",
     )
@@ -51,9 +51,9 @@ def main():
         "--num_workers", default=1, type=int, help="number of workers to load batches"
     )
     parser.add_argument("--do_save", action="store_true")
-    parser.add_argument("--n_labels", default=10000, type=str, help="")
+    parser.add_argument("--n_labels", default=10000, type=int, help="")
     args = parser.parse_args()
-
+    seed_everything(42, workers=True)
     data_module = TextDataModule(
         data_path="data/",
         model_name=args.model_name,
@@ -75,9 +75,10 @@ def main():
     api_key_wandb = "89dd0dde666ab90e0366c4fec54fe1a4f785f3ef"
     wandb.login(key=api_key_wandb)
     wandb_logger = WandbLogger(project='LePaRD_ensemble', entity='sup-res-dl', log_model='all')
-    checkpoint_callback = ModelCheckpoint(monitor="top_1_val_accuracy",save_top_k = 1, mode = "max",auto_insert_metric_name=True, every_n_epochs=1,)
-    trainer = pl.pytorch.Trainer(limit_train_batches=100, limit_val_batches = 100, max_epochs=args.num_epochs,check_val_every_n_epoch=1,log_every_n_steps=20,logger=wandb_logger,callbacks=[checkpoint_callback])
+    checkpoint_callback = ModelCheckpoint(monitor="top_1_val_accuracy",save_top_k = 1, filename='best_ensemble',mode = "max",auto_insert_metric_name=False, every_n_epochs=1,enable_version_counter=False)
+    trainer = pl.pytorch.Trainer(limit_train_batches=100, limit_val_batches = 100, max_epochs=args.num_epochs,check_val_every_n_epoch=1,val_check_interval=0.5,log_every_n_steps=5,logger=wandb_logger,callbacks=[checkpoint_callback])
     
     state = DataState()
-    checkpoint_path = "sup-resdl/LePaRD_classification/model-ymwdc5eu:v5" 
+    checkpoint_path = "sup-res-dl/LePaRD_classification/model-ymwdc5eu:v5" 
     trainer.fit(EnsembleModel(checkpoint_path, state), data_module.train_dataloader(), data_module.val_dataloader())
+    trainer.test(dataloaders=data_module.test_dataloader(),ckpt_path='best')

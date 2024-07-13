@@ -49,7 +49,7 @@ if __name__ == "__main__":
         "--num_workers", default=1, type=int, help="number of workers to load batches"
     )
     parser.add_argument("--do_save", action="store_true")
-    parser.add_argument("--n_labels", default=10000, type=str, help="")
+    parser.add_argument("--n_labels", default=10000, type=int, help="")
     args = parser.parse_args()
 
 
@@ -76,10 +76,10 @@ if __name__ == "__main__":
     api_key_wandb = "89dd0dde666ab90e0366c4fec54fe1a4f785f3ef"
     wandb.login(key=api_key_wandb)
     wandb_logger = WandbLogger(project='LePaRD_classification', entity='sup-res-dl', log_model='all')
-    checkpoint_callback = ModelCheckpoint(monitor="top_1_val_accuracy",save_top_k = 1, mode = "max",auto_insert_metric_name=True, every_n_epochs=1,)
+    checkpoint_callback = ModelCheckpoint(monitor="top_1_val_accuracy",save_top_k = 1, filename='classify_' + str(args.n_labels),mode = "max",auto_insert_metric_name=False, every_n_epochs=1,enable_version_counter=False)
     #don't limit batches, breaks learning rate scheduler
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    trainer = pl.pytorch.Trainer(limit_train_batches=9999999, limit_val_batches = 9999999, max_epochs=args.num_epochs,check_val_every_n_epoch=1,val_check_interval=2,log_every_n_steps=2,logger=wandb_logger,callbacks=[checkpoint_callback,lr_monitor])
+    trainer = pl.pytorch.Trainer(limit_train_batches=9999999, limit_val_batches = 9999999, max_epochs=args.num_epochs,check_val_every_n_epoch=1,val_check_interval=0.5,log_every_n_steps=2,logger=wandb_logger,callbacks=[checkpoint_callback,lr_monitor])
     
     trainer.fit(SequenceClassificationModule(args=args), data_module.train_dataloader(), data_module.val_dataloader())
-    trainer.test(dataloaders=data_module.test_dataloader())
+    trainer.test(dataloaders=data_module.test_dataloader(),ckpt_path='best')

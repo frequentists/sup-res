@@ -29,7 +29,7 @@ class SequenceClassificationModule(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters(args)
         self.model_name = args.model_name
-        self.num_labels = args.n_labels
+        self.num_labels = int(args.n_labels)
         self.learning_rate = args.learning_rate
         self.adam_epsilon = args.adam_epsilon
         self.num_epochs = args.num_epochs
@@ -51,9 +51,9 @@ class SequenceClassificationModule(pl.LightningModule):
         loss = output.loss / self.gradient_accumulation_steps
         self.log('train_loss', loss)
         logits,targets = output.logits.detach().to('cpu').numpy(),batch["label"].to('cpu').numpy()
-        top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
-        top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(10000))
-        top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(10000))
+        top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(self.num_labels))
+        top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(self.num_labels))
+        top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(self.num_labels))
         self.log("top_1_train_accuracy", top_1_accuracy)
         self.log("top_5_train_accuracy", top_5_accuracy)
         self.log("top_10_train_accuracy", top_10_accuracy)
@@ -66,12 +66,26 @@ class SequenceClassificationModule(pl.LightningModule):
             logits = output.logits.detach().to('cpu').numpy()
             targets = batch["label"].to('cpu').numpy()
             #self.log("val_loss", output.loss)
-            top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(10000))
-            top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(10000))
-            top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(10000))
+            top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(self.num_labels))
+            top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(self.num_labels))
+            top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(self.num_labels))
             self.log("top_1_val_accuracy", top_1_accuracy)
             self.log("top_5_val_accuracy", top_5_accuracy)
             self.log("top_10_val_accuracy", top_10_accuracy)
+    
+    def test_step(self, batch, batch_idx):
+        self.model.eval()
+        with torch.no_grad():
+            output = self.model(**batch["model_inputs"])
+            logits = output.logits.detach().to('cpu').numpy()
+            targets = batch["label"].to('cpu').numpy()
+            #self.log("val_loss", output.loss)
+            top_1_accuracy = top_k_accuracy_score(targets, logits, k=1 , labels=np.arange(self.num_labels))
+            top_5_accuracy = top_k_accuracy_score(targets, logits, k=5, labels=np.arange(self.num_labels))
+            top_10_accuracy = top_k_accuracy_score(targets, logits, k=10, labels=np.arange(self.num_labels))
+            self.log("top_1_test_accuracy", top_1_accuracy)
+            self.log("top_5_test_accuracy", top_5_accuracy)
+            self.log("top_10_test_accuracy", top_10_accuracy)
     
     def predict(self, batch, batch_idx):
         self.model.eval()
@@ -151,15 +165,12 @@ class SequenceClassificationModule(pl.LightningModule):
             optimizer_grouped_parameters, lr=self.learning_rate, eps=self.adam_epsilon
         )
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            optimizer, max_lr=1e-4, total_steps=self.trainer.estimated_stepping_batches,three_phase=False
+            optimizer, max_lr=1e-3, total_steps=self.trainer.estimated_stepping_batches,three_phase=False
         )
         return {
             'optimizer': optimizer,
             'lr_scheduler': {
                 'scheduler': scheduler,
-                'interval': 'step',  # or 'epoch' for epoch-level scheduler
-                'frequency': 1,
-                'reduce_on_plateau': True,
                 'monitor': "top_1_val_accuracy",
                 #'name': 'one_cycle_lr'
             }
