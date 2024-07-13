@@ -106,9 +106,11 @@ class TextDataModule(pl.LightningDataModule):
         self.X_val = self.val.destination_context.tolist()
         self.y_val = [self.passage2labelid[row.passage_id] for _, row in self.val.iterrows()]
 
+        self.X_test = self.test.destination_context.tolist()
+        self.y_test = [self.passage2labelid[row.passage_id] for _, row in self.test.iterrows()]
         self.train_dataset = SequenceClassificationDataset(self.X_train, self.y_train, self.tokenizer)
         self.val_dataset = SequenceClassificationDataset(self.X_val, self.y_val, self.tokenizer)
-        self.test_dataset = SequenceClassificationDatasetNoLabels(self.test.destination_context.tolist(), self.tokenizer)
+        self.test_dataset = SequenceClassificationDataset(self.X_test,self.y_test, self.tokenizer)
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True, collate_fn=self.train_dataset.collate_fn)

@@ -19,8 +19,8 @@ class EnsembleModel(lt.LightningModule):
         self.criterion = nn.CrossEntropyLoss()
         # Initialize trainable weights
         self.classifier_weight = nn.Parameter(torch.tensor(0.5))
-        self.colbert_weight = nn.Parameter(torch.tensor(0.5))
-
+        # self.colbert_weight = nn.Parameter(torch.tensor(0.5))
+        self.batch_norm = nn.BatchNorm1d(self.classifier.num_labels)
         self.save_hyperparameters()
     def load_classifier(self, checkpoint_path):
         # Load the classifier from the wandb checkpoint    
@@ -38,7 +38,7 @@ class EnsembleModel(lt.LightningModule):
     def forward(self, x_raw_text, **x_tokenized):
         classifier_output = self.classifier(**x_tokenized)
         colbert_output = torch.tensor(self.colbert_scorer.scores_colbert(x_raw_text, n=self.classifier.num_labels)).to(classifier_output.logits)
-        return self.classifier_weight * classifier_output.logits + self.colbert_weight * colbert_output
+        return self.classifier_weight * classifier_output.logits + self.batch_norm(colbert_output)
 
     def training_step(self, batch, batch_idx):
         output = self(batch["raw_text"], **batch["model_inputs"])
@@ -51,6 +51,7 @@ class EnsembleModel(lt.LightningModule):
         self.log("top_1_train_accuracy", top_1_accuracy)
         self.log("top_5_train_accuracy", top_5_accuracy)
         self.log("top_10_train_accuracy", top_10_accuracy)
+        self.log("classifier_weight",self.classifier_weight)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -84,4 +85,4 @@ class EnsembleModel(lt.LightningModule):
         return test_loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam([self.classifier_weight, self.colbert_weight], lr=1e-4)
+        return torch.optim.Adam([{'params': self.batch_norm.parameters()},{'params': self.classifier_weight}], lr=1e-3)
